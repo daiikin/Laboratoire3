@@ -1,0 +1,11 @@
+{
+"SigGen":{
+    "Tektronix":{
+        "AFG3102":{
+            "address": "USB0::0x0699::0x0343::C010533::INSTR",
+            "type": "USB",
+            "identifier": "Old Arbitrary Function Generator"
+            }
+        }
+    }
+}
