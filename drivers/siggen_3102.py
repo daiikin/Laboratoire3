@@ -11,7 +11,13 @@ class DeepBlue():
 
 
     def __enter__(self):
-        return self
+        return self    
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.client.close()
+        return
+    
+
     
     def write(self, cmd):
         self.client.write(cmd)
@@ -95,8 +101,6 @@ class DeepBlue():
         self.write(f"SOUR{channel}:FUNC:SHAP {waveform}")
         return
     
-    def __exit__(self, exc_type, exc_value, traceback):
-        return
 
 
 

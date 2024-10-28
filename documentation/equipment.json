@@ -4,7 +4,22 @@
         "AFG3102":{
             "address": "USB0::0x0699::0x0343::C010533::INSTR",
             "type": "USB",
-            "identifier": "Old Arbitrary Function Generator"
+            "module_path": "drivers.siggen_3102",
+            "class_name": "DeepBlue",
+            "identifier": "Old AFG",
+            "active": 0
+            }
+        }
+    },
+"Oscilloscope":{
+    "Tektronix":{
+        "DPO3034":{
+            "address": "USB0::0x0699::0x0413::C013488::INSTR",
+            "type": "USB",
+            "module_path": "drivers.oscilloscope_3034",
+            "class_name": "AlphaZero",
+            "identifier": "Goated Oscilloscope",
+            "active": 1
             }
         }
     }
