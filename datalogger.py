@@ -1,21 +1,28 @@
 
 #%%
-from drivers import oscilloscope_3034 as Scope
-from drivers import siggen_3102 as SigGen
 import json
 import importlib
+import numpy as np
+import matplotlib.pyplot as plt
 
+from drivers.oscilloscope_3034 import AlphaZero
+from drivers.siggen_3102 import DeepBlue
 
 class MechanicalTurk():
     def __init__(self):
       
-        print("Initializing LeTurc")
+        print("Initializing MechanicalTurk")
         self.config_path = "documentation"
         self.devices_dict = self.master_handshake()
         print("Devices: ", self.devices_dict)
-        self.scope = self.devices_dict['Goated Oscilloscope']
-        # self.siggen = self.devices_dict['Old AFG']
+        self.scope: AlphaZero = self.devices_dict['Goated Oscilloscope']
 
+        # self.siggen = self.devices_dict['Old AFG']
+        self.grab_data()
+        print(self.channel1_trace)
+        plt.plot(self.channel1_trace)
+        plt.plot(self.channel2_trace)   
+        plt.show()
 
       
     def __enter__(self):
@@ -74,6 +81,15 @@ class MechanicalTurk():
         
         return self.devices_dict
     
+    def grab_data(self):
+        self.channel1_trace = self.scope.get_trace(1, 10000)
+        self.channel2_trace = self.scope.get_trace(2, 10000)
+
+        np.save("output/channel1_trace", self.channel1_trace)
+        np.save("output/channel2_trace", self.channel2_trace)
+
+
+
 
 
 if __name__ == "__main__":

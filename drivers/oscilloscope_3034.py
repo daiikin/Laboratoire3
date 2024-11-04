@@ -126,6 +126,8 @@ class AlphaZero:
         self.write(f"DAT:STAR 1")
         self.write(f"DAT:STOP {points}")
         trace = self.query("CURV?")
+        trace = np.array(trace.split(",")).astype(np.int64) #### because we expect negative values too
+
         return trace
 
 
