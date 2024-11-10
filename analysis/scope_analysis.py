@@ -22,18 +22,30 @@ class Leela :
         popt, pcov = curve_fit(self.gaussian, x, y)
         plt.plot(x, self.gaussian(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
+        plt.legend(['gaussian_fit', 'data'])
+        plt.xlabel('Wavelenght (nm)')
+        plt.ylabel('Intensity (V)')
+        plt.show()
         return popt, pcov
     
     def fit_lorentzian(self, x, y):  
         popt, pcov = curve_fit(self.lorentzian, x, y)
         plt.plot(x, self.lorentzian(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
+        plt.xlabel('Wavelenght (nm)')
+        plt.ylabel('Intensity (V)')
+        plt.legend(['lorentzian fit', 'data'])
+        plt.show()
         return popt, pcov
     
     def fit_fano(self, x, y):
         popt, pcov = curve_fit(self.fano, x, y)
         plt.plot(x, self.fano(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
+        plt.xlabel('Wavelenght (nm)')
+        plt.ylabel('Intensity (V)')
+        plt.legend(['fano lineshape fit', 'data'])
+        plt.show()
         return popt, pcov
     
 
@@ -46,6 +58,6 @@ class Leela :
     def fano_residuals(self, x, y):
         return y - self.fit_fano(x, y)
     
-    
+
         
     
