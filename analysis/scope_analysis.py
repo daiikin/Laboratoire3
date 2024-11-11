@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
@@ -89,6 +90,17 @@ class Leela :
     
     def fano_residuals(self, x, y):
         return y - self.fit_fano(x, y)
+    
+    def load_data(self, filename):
+        data = np.loadtxt(filename)
+        return data
+    
+    def window_averaging(self, array, window_size):
+        window_average = np.convolve(array, np.ones(window_size)/window_size, mode='valid')
+        plt.plot(window_average)
+        return window_average
+    
+    
     
 
         

@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from drivers.oscilloscope_3034 import AlphaZero
 from drivers.siggen_3102 import DeepBlue
+from analysis.scope_analysis import Leela
 
 class MechanicalTurk():
     def __init__(self):
@@ -24,6 +25,7 @@ class MechanicalTurk():
         plt.plot(self.channel2_trace)   
         plt.show()
 
+        self.analysis = Leela()
       
     def __enter__(self):
         return self
@@ -82,8 +84,8 @@ class MechanicalTurk():
         return self.devices_dict
     
     def grab_data(self):
-        self.channel1_trace = self.scope.get_trace(1, 10000)
-        self.channel2_trace = self.scope.get_trace(2, 10000)
+        self.channel1_trace = self.scope.get_trace(1, 1e6)
+        self.channel2_trace = self.scope.get_trace(2, 1e6)
 
         np.save("output/channel1_trace", self.channel1_trace)
         np.save("output/channel2_trace", self.channel2_trace)
