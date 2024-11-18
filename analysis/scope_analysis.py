@@ -6,8 +6,10 @@ from scipy.signal import find_peaks
 class Leela():
     def __init__(self):
         print("Initializing Leela")
+
     def __enter__(self):
         return self
+   
     def __exit__(self, exc_type, exc_value, traceback):
         return
     
@@ -110,23 +112,41 @@ class Leela():
         plt.plot(window_average)
         plt.show()
         return window_average
-    
-    def split_peaks(self, y, x_start = 0, x_end = None):
+    ''' #split peaks function way too fancy and doesnt work
+    def split_peaks(self, y:np.array, x_start=0, x_end=None):
         if x_end is None:
             x_end = len(y)
         x = np.linspace(x_start, x_end, len(y))
+    
         peaks, _ = find_peaks(y)
         x_peaks = x[peaks]
         y_peaks = y[peaks]
         split_peaks = []
+
+        if len(peaks) == 0:
+            split_peaks.append(y)
+        else:
+            boundaries = [0] + [(peaks[i - 1] + peaks[i]) // 2 for i in range(1, len(peaks))] + [len(y)]
+            for i in range(len(boundaries) - 1):
+                split_peaks.append(y[boundaries[i]:boundaries[i + 1]])
+
+        return split_peaks
+        '''
+    def split_peaks(self, y:np.array, x_start=0, x_end=None):
+        if x_end is None:
+            x_end = len(y)
+        x = np.linspace(x_start, x_end, len(y))
+    
+        peaks, _ = find_peaks(y, height = 10, width = 1000)
+        x_peaks = x[peaks]
+        y_peaks = y[peaks]
+        split_peaks = []
+
+        for peak in peaks:
+            right = peak + 100000
+            left = peak - 100000
+            split_peaks.append(y[left:right])
         
-        for i in range(len(x_peaks) + 1):
-            if i == 0:
-                split_peaks.append(y[:(x_peaks[i] + x_peaks[i+1])/2])
-            elif i == len(x_peaks) - 1:
-                split_peaks[i].append(y[(x_peaks[i-1] + x_peaks[i])/2:])
-            else:
-                split_peaks[i].append(y[(x_peaks[i-1] + x_peaks[i])/2:(x_peaks[i] + x_peaks[i+1])/2])
         return split_peaks
                
 if __name__ == "__main__":
