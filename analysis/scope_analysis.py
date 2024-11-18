@@ -1,79 +1,87 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit    
+from scipy.signal import find_peaks
 
-class Leela :
+class Leela():
     def __init__(self):
-        pass
+        print("Initializing Leela")
     def __enter__(self):
         return self
     def __exit__(self, exc_type, exc_value, traceback):
         return
     
-    def gaussian(self, x, *p): #Where p is a list of parameters in order of a, x0, sigma
-        y = np.zeros_like(x)
-        for i in range(0, len(p), 3):
-            a = p[i]
-            x0 = p[i+1]
-            sigma = p[i+2]
-            y = y + a*np.exp(-(x-x0)**2/(2*sigma**2))
-        return y
+    def gaussian(self, x, a, x0, sigma): #Where p is a list of parameters in order of a, x0, sigma
+        return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
     
-    def lorentzian(self, x, *p): #Where p is a list of parameters in order of a, x0, gamma
-        y = np.zeros_like(x)
-        for i in range(0, len(p), 3):
-            a = p[i]
-            x0 = p[i+1]
-            gamma = p[i+2]
-            y = y + a*gamma**2/((x-x0)**2+gamma**2)
-        return y
+    def lorentzian(self, x, a, x0, gamma): #Where p is a list of parameters in order of a, x0, gamma
+        return a*gamma**2/((x-x0)**2+gamma**2)
     
-    def fano(self, x, *p): #Where p is a list of parameters in order of F, q, x0
-        y = np.zeros_like(x)
-        for i in range(0, len(p), 3):
-            F = p[i]
-            q = p[i+1]
-            x0 = p[i+2]
-            y = y + F*(q+x)**2/(q**2+1)
-        return y
+    def fano(self, x, F, q): #Where p is a list of parameters in order of F, q
+        return F*(q + x)**2/(q**2 + 1)
+      
     
-    def fit_gaussian(self, x, y):
+    def fit_gaussian(self, y, x_start=0, x_end=None):
+        # Generate x values
+        if x_end is None:
+            x_end = len(y)  # Use the length of y if x_end is not provided
+        x = np.linspace(x_start, x_end, len(y))
+
+        # Fit the Gaussian model to the data
         popt, pcov = curve_fit(self.gaussian, x, y)
-        plt.plot(x, self.gaussian(x, *popt), 'r-')
-        plt.plot(x, y, 'b-')
-        plt.legend(['gaussian_fit', 'data'])
-        plt.xlabel('Wavelenght (nm)')
+
+        # Plot the data and the Gaussian fit
+        plt.figure(figsize=(8, 6))
+        plt.plot(x, self.gaussian(x, *popt), 'r-', label='Gaussian Fit')
+        plt.plot(x, y, 'b-', label='Data')
+        plt.legend()
+        plt.xlabel('Wavelength (nm)')
         plt.ylabel('Intensity (V)')
+        plt.title('Gaussian Fit')
+        plt.grid(True)
         plt.show()
+        
         return popt, pcov
     
-    def fit_lorentzian(self, x, y):  
+    def fit_lorentzian(self, y, x_start = 0, x_end = None): 
+        if x_end is None:
+            x_end = len(y)
+        x = np.linspace(x_start, x_end, len(y)) 
         popt, pcov = curve_fit(self.lorentzian, x, y)
         plt.plot(x, self.lorentzian(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
         plt.xlabel('Wavelenght (nm)')
         plt.ylabel('Intensity (V)')
-        plt.legend(['lorentzian fit', 'data'])
+        plt.legend(['lorentzian lineshape fit', 'data'])
         plt.show()
+
         return popt, pcov
     
-    def fit_fano(self, x, y):
+    def fit_fano(self, y, x_start = 0, x_end = None):
+        if x_end is None:
+            x_end = len(y)
+        x = np.linspace(x_start, x_end, len(y))
         popt, pcov = curve_fit(self.fano, x, y)
         plt.plot(x, self.fano(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
-        plt.xlabel('Wavelenght (nm)')
+        plt.xlabel('Wavelength (nm)')
         plt.ylabel('Intensity (V)')
-        plt.legend(['fano lineshape fit', 'data'])
+        plt.legend(['Fano lineshape fit', 'data'])
         plt.show()
+        
         return popt, pcov
-    
-    def fhwm(self, x, y):
+
+    def fhwm(self, y, x_start = 0, x_end = None):
+        if x_end is None:
+            x_end = len(y)
+        x = np.linspace(x_start, x_end, len(y))
         max_y = max(y)
         half_max_y = max_y/2
         idx_min = (np.abs(y - half_max_y)).argmin()
         idx_max = (np.abs(y - half_max_y)).argmax()
         return np.absolute(x[idx_min] - x[idx_max])
-    
+    '''
+    #functions to be further modified for x because ill defined in the current state
     def fwhm_gaussian(self, x, y):
         popt, pcov = self.fit_gaussian(x, y)
         return 2*np.sqrt(2*np.log(2))*popt[2]
@@ -90,17 +98,42 @@ class Leela :
     
     def fano_residuals(self, x, y):
         return y - self.fit_fano(x, y)
+    '''
     
     def load_data(self, filename):
-        data = np.loadtxt(filename)
+        data = np.load(filename)
         return data
+    
     
     def window_averaging(self, array, window_size):
         window_average = np.convolve(array, np.ones(window_size)/window_size, mode='valid')
         plt.plot(window_average)
+        plt.show()
         return window_average
     
-    
+    def split_peaks(self, y, x_start = 0, x_end = None):
+        if x_end is None:
+            x_end = len(y)
+        x = np.linspace(x_start, x_end, len(y))
+        peaks, _ = find_peaks(y)
+        x_peaks = x[peaks]
+        y_peaks = y[peaks]
+        split_peaks = []
+        
+        for i in range(len(x_peaks) + 1):
+            if i == 0:
+                split_peaks.append(y[:(x_peaks[i] + x_peaks[i+1])/2])
+            elif i == len(x_peaks) - 1:
+                split_peaks[i].append(y[(x_peaks[i-1] + x_peaks[i])/2:])
+            else:
+                split_peaks[i].append(y[(x_peaks[i-1] + x_peaks[i])/2:(x_peaks[i] + x_peaks[i+1])/2])
+        return split_peaks
+               
+if __name__ == "__main__":
+    with Leela() as lc:
+        import code 
+        code.interact(local=locals())
+
     
 
         
