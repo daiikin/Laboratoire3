@@ -6,6 +6,14 @@ from scipy.signal import find_peaks
 class Leela():
     def __init__(self):
         print("Initializing Leela")
+        self.celeretite = 299792458 #m/s
+        self.channel1 = self.load_data("output/channel1_trace.npy")
+        self.channel2 = self.load_data("output/channel2_trace.npy")
+        self.data1 = self.window_averaging(self.channel1, 10000)
+        self.data2 = self.window_averaging(self.channel2, 10000)
+        self.split1 = self.split_peaks(self.data1)
+        self.split2 = self.split_peaks(self.data2)
+        self.fit_fano(self.split1[1])
 
     def __enter__(self):
         return self
@@ -17,10 +25,12 @@ class Leela():
         return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2)) + C
     
     def lorentzian(self, x, a, x0, gamma, C): #Where p is a list of parameters in order of a, x0, gamma
-        return a*gamma**2/((x-x0)**2+gamma**2) + C
+        return a*gamma**2/((1/x - 1/x0)**2+gamma**2) + C
     
-    def fano(self, x, F, q, C): #Where p is a list of parameters in order of F, q
-        return F*(x + q)**2/(x**2 + 1) + C
+    def fano(self, x, A, q, x0, gamma, C): #Where p is a list of parameters in order of F, q
+        numerator = (q + self.celeretite*(1/(x - x0 + 0.00001))/gamma)**2
+        denominator = 1 + (self.celeretite*(1/(x - x0 + 0.00001))/gamma)**2
+        return A*numerator/denominator + C
       
     
     def fit_gaussian(self, y, x_start=0, x_end=None):
@@ -63,7 +73,14 @@ class Leela():
         if x_end is None:
             x_end = len(y)
         x = np.linspace(x_start, x_end, len(y))
-        popt, pcov = curve_fit(self.fano, x, y, maxfev=10000)
+        x0_guess = x[np.argmax(y)]
+        A_guess = max(y) * 10
+        C_guess = min(y)
+        gamma_guess = self.fwhm(y, x)*0.1
+        q_guess = 0.1
+        guess = [A_guess, q_guess, x0_guess, gamma_guess, C_guess]
+        popt, pcov = curve_fit(self.fano, x, y, p0=guess, maxfev=1000)
+        print(popt)
         plt.plot(x, self.fano(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
         plt.xlabel('Wavelength (nm)')

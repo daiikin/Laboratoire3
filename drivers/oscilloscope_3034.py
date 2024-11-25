@@ -1,4 +1,5 @@
 import pyvisa
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import serial.tools
@@ -127,8 +128,19 @@ class AlphaZero:
         self.write(f"DAT:STOP {points}")
         trace = self.query("CURV?")
         trace = np.array(trace.split(",")).astype(np.int64) #### because we expect negative values too
-
-        return trace
+        get_voltage_division = float(self.get_voltage_division(channel))
+        get_voltage_offset = float(self.get_voltage_offset(channel))
+        get_trigger_level = float(self.get_trigger_level(channel))
+        get_trigger_mode = self.get_trigger_mode(channel)
+        get_trigger_coupling = self.get_trigger_coupling(channel)
+        get_trigger_source = self.get_trigger_source(channel)
+        get_voltage_coupling = self.get_voltage_coupling(channel)
+        get_time_offset = float(self.get_time_offset())
+        get_time_division = float(self.get_time_division())
+        get_current_time = time.time()
+        metadata = {"voltage_division": get_voltage_division, "voltage_offset": get_voltage_offset, "trigger_level": get_trigger_level, "trigger_mode": get_trigger_mode, "trigger_coupling": get_trigger_coupling, "trigger_source": get_trigger_source, "voltage_coupling": get_voltage_coupling, "time_offset": get_time_offset, "time_division": get_time_division, "time": get_current_time}
+       
+        return trace, metadata
 
 
 if __name__ == "__main__":
