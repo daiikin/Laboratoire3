@@ -13,26 +13,26 @@ class Leela():
     def __exit__(self, exc_type, exc_value, traceback):
         return
     
-    def gaussian(self, x, a, x0, sigma): #Where p is a list of parameters in order of a, x0, sigma
-        return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
+    def gaussian(self, x, a, x0, sigma, C): #Where p is a list of parameters in order of a, x0, sigma
+        return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2)) + C
     
-    def lorentzian(self, x, a, x0, gamma): #Where p is a list of parameters in order of a, x0, gamma
-        return a*gamma**2/((x-x0)**2+gamma**2)
+    def lorentzian(self, x, a, x0, gamma, C): #Where p is a list of parameters in order of a, x0, gamma
+        return a*gamma**2/((x-x0)**2+gamma**2) + C
     
-    def fano(self, x, F, q): #Where p is a list of parameters in order of F, q
-        return F*(q + x)**2/(q**2 + 1)
+    def fano(self, x, F, q, C): #Where p is a list of parameters in order of F, q
+        return F*(x + q)**2/(x**2 + 1) + C
       
     
     def fit_gaussian(self, y, x_start=0, x_end=None):
-        # Generate x values
+        
         if x_end is None:
-            x_end = len(y)  # Use the length of y if x_end is not provided
+            x_end = len(y)  
         x = np.linspace(x_start, x_end, len(y))
+        
+        guess_sigma = self.fwhm(y, x)/2
+        guess = [max(y), np.mean(x), guess_sigma, min(y)]
+        popt, pcov = curve_fit(self.gaussian, x, y, p0=guess, maxfev=1000)
 
-        # Fit the Gaussian model to the data
-        popt, pcov = curve_fit(self.gaussian, x, y)
-
-        # Plot the data and the Gaussian fit
         plt.figure(figsize=(8, 6))
         plt.plot(x, self.gaussian(x, *popt), 'r-', label='Gaussian Fit')
         plt.plot(x, y, 'b-', label='Data')
@@ -49,7 +49,7 @@ class Leela():
         if x_end is None:
             x_end = len(y)
         x = np.linspace(x_start, x_end, len(y)) 
-        popt, pcov = curve_fit(self.lorentzian, x, y)
+        popt, pcov = curve_fit(self.lorentzian, x, y, maxfev=10000)
         plt.plot(x, self.lorentzian(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
         plt.xlabel('Wavelenght (nm)')
@@ -63,7 +63,7 @@ class Leela():
         if x_end is None:
             x_end = len(y)
         x = np.linspace(x_start, x_end, len(y))
-        popt, pcov = curve_fit(self.fano, x, y)
+        popt, pcov = curve_fit(self.fano, x, y, maxfev=10000)
         plt.plot(x, self.fano(x, *popt), 'r-')
         plt.plot(x, y, 'b-')
         plt.xlabel('Wavelength (nm)')
@@ -73,10 +73,7 @@ class Leela():
         
         return popt, pcov
 
-    def fhwm(self, y, x_start = 0, x_end = None):
-        if x_end is None:
-            x_end = len(y)
-        x = np.linspace(x_start, x_end, len(y))
+    def fwhm(self, y, x):
         max_y = max(y)
         half_max_y = max_y/2
         idx_min = (np.abs(y - half_max_y)).argmin()
@@ -152,9 +149,4 @@ class Leela():
 if __name__ == "__main__":
     with Leela() as lc:
         import code 
-        code.interact(local=locals())
-
-    
-
-        
-    
+    code.interact(local=locals())
