@@ -84,13 +84,19 @@ class MechanicalTurk():
         return self.devices_dict
     
     def grab_data(self):
-        self.channel1_trace = self.scope.get_trace(1, 1e6)
-        self.channel2_trace = self.scope.get_trace(2, 1e6)
+        self.channel1_trace, self.channel1_metadata = self.scope.get_trace(1, 1e6)
+        self.channel2_trace, self.channel2_metadata = self.scope.get_trace(2, 1e6)
 
-        np.save("output/channel1_trace", self.channel1_trace)
-        np.save("output/channel2_trace", self.channel2_trace)
+        np.save(f"output/channel1_trace_{self.channel1_metadata['date']}", self.channel1_trace)
+        np.save(f"output/channel2_trace_{self.channel2_metadata['date']}", self.channel2_trace)
 
+        with open(f"output/channel1_metadata_{self.channel1_metadata['date']}.json", "w") as f:
+            json.dump(self.channel1_metadata, f)
 
+        with open(f"output/channel2_metadata_{self.channel2_metadata['date']}.json", "w") as f:
+            json.dump(self.channel2_metadata, f)
+
+        return
 
 
 

@@ -1,5 +1,6 @@
 import pyvisa
 import time
+from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import serial.tools
@@ -105,11 +106,11 @@ class AlphaZero:
 #########################################################################
 
     def set_time_division(self, division):
-        self.write(f"TIM:SCA {division}")
+        self.write(f"HOR:SCA {division}")
         return
     
     def get_time_division(self):
-        return self.query("TIM:SCA?")
+        return self.query("HOR:SCA?")
     
     def set_time_offset(self, offset):
         self.write(f"TIM:OFFS {offset}")
@@ -131,14 +132,15 @@ class AlphaZero:
         get_voltage_division = float(self.get_voltage_division(channel))
         get_voltage_offset = float(self.get_voltage_offset(channel))
         get_trigger_level = float(self.get_trigger_level(channel))
-        get_trigger_mode = self.get_trigger_mode(channel)
-        get_trigger_coupling = self.get_trigger_coupling(channel)
-        get_trigger_source = self.get_trigger_source(channel)
-        get_voltage_coupling = self.get_voltage_coupling(channel)
-        get_time_offset = float(self.get_time_offset())
         get_time_division = float(self.get_time_division())
         get_current_time = time.time()
-        metadata = {"voltage_division": get_voltage_division, "voltage_offset": get_voltage_offset, "trigger_level": get_trigger_level, "trigger_mode": get_trigger_mode, "trigger_coupling": get_trigger_coupling, "trigger_source": get_trigger_source, "voltage_coupling": get_voltage_coupling, "time_offset": get_time_offset, "time_division": get_time_division, "time": get_current_time}
+        get_date = int(datetime.now().strftime('%Y%m%d'))
+        metadata = {"voltage_division": get_voltage_division, 
+                    "voltage_offset": get_voltage_offset, 
+                    "trigger_level": get_trigger_level, 
+                    "time_division": get_time_division,
+                    "time": get_current_time,
+                    "date": get_date}
        
         return trace, metadata
 

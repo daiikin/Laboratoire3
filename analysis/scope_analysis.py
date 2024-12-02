@@ -7,37 +7,64 @@ class Leela():
     def __init__(self):
         print("Initializing Leela")
         self.celeretite = 299792458 #m/s
-        self.channel1 = self.load_data("output/channel1_trace.npy")
-        self.channel2 = self.load_data("output/channel2_trace.npy")
+        self.a_channel1 = 1.18 #s/nm value of coefficient for cavity 1 (longest cavity)
+        self.a_channel2 = 0.112 #s/nm value of coefficient for cavity 2 (shortest cavity)
+        self.time_bin = 1e-7 #time bin in seconds
+        self.lambda_middle = 1568
+        self.lambda_delta = 0.038
+        self.lambda_div = self.lambda_delta/1e6
+
+        self.channel1 = self.load_data("output/channel1_trace_20241125.npy")
+        self.channel2 = self.load_data("output/channel2_trace_20241125.npy")
+        print(self.channel1)
+        
         self.data1 = self.window_averaging(self.channel1, 10000)
         self.data2 = self.window_averaging(self.channel2, 10000)
         self.split1 = self.split_peaks(self.data1)
         self.split2 = self.split_peaks(self.data2)
-        self.fit_fano(self.split1[1])
+        """
+        self.fit_fano(self.split1[5])
+        """
+        for peaks in self.split1:
+            if peaks.size > 0:
+                self.fit_fano(peaks, 1)
+            else:
+                print("No peaks found")
+        for peaks in self.split2:
+            if peaks.size > 0:
+                self.fit_fano(peaks, 2)
+            else:
+                print("No peaks found")
+
+
+
+        
 
     def __enter__(self):
         return self
    
     def __exit__(self, exc_type, exc_value, traceback):
         return
+
+    ### wvl in nm, freq out in MHz
+    def wvl2freq(self, wvl):
+        return self.celeretite / (wvl * 1e-9) / 1e6
     
     def gaussian(self, x, a, x0, sigma, C): #Where p is a list of parameters in order of a, x0, sigma
         return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2)) + C
     
     def lorentzian(self, x, a, x0, gamma, C): #Where p is a list of parameters in order of a, x0, gamma
-        return a*gamma**2/((1/x - 1/x0)**2+gamma**2) + C
+        return a*gamma**2/((x - x0)**2+gamma**2) + C
     
     def fano(self, x, A, q, x0, gamma, C): #Where p is a list of parameters in order of F, q
-        numerator = (q + self.celeretite*(1/(x - x0 + 0.00001))/gamma)**2
-        denominator = 1 + (self.celeretite*(1/(x - x0 + 0.00001))/gamma)**2
+        numerator = (q + (x - x0 )/gamma)**2
+        denominator = 1 + ((x - x0)/gamma)**2
         return A*numerator/denominator + C
       
     
-    def fit_gaussian(self, y, x_start=0, x_end=None):
-        
-        if x_end is None:
-            x_end = len(y)  
-        x = np.linspace(x_start, x_end, len(y))
+    def fit_gaussian(self, y):
+         
+        x = np.linspace(self.lambda_middle - self.lambda_delta, self.lambda_middle + self.lambda_middle , len(y))
         
         guess_sigma = self.fwhm(y, x)/2
         guess = [max(y), np.mean(x), guess_sigma, min(y)]
@@ -55,13 +82,14 @@ class Leela():
         
         return popt, pcov
     
-    def fit_lorentzian(self, y, x_start = 0, x_end = None): 
-        if x_end is None:
-            x_end = len(y)
-        x = np.linspace(x_start, x_end, len(y)) 
-        popt, pcov = curve_fit(self.lorentzian, x, y, maxfev=10000)
-        plt.plot(x, self.lorentzian(x, *popt), 'r-')
-        plt.plot(x, y, 'b-')
+    def fit_lorentzian(self, y): 
+        
+        x = np.linspace(self.lambda_middle - self.lambda_delta, self.lambda_middle + self.lambda_middle , len(y))
+        w = self.a_channel1 * self.wvl2freq(x) / self.time_bin
+
+        popt, pcov = curve_fit(self.lorentzian, w, y, maxfev=1000)
+        plt.plot(w, self.lorentzian(w, *popt), 'r-')
+        plt.plot(w, y, 'b-')
         plt.xlabel('Wavelenght (nm)')
         plt.ylabel('Intensity (V)')
         plt.legend(['lorentzian lineshape fit', 'data'])
@@ -69,23 +97,32 @@ class Leela():
 
         return popt, pcov
     
-    def fit_fano(self, y, x_start = 0, x_end = None):
-        if x_end is None:
-            x_end = len(y)
-        x = np.linspace(x_start, x_end, len(y))
-        x0_guess = x[np.argmax(y)]
-        A_guess = max(y) * 10
-        C_guess = min(y)
-        gamma_guess = self.fwhm(y, x)*0.1
+    def fit_fano(self, y, channel):
+        x = np.arange(len(y))
+        peak_index = np.argmax(y)
+        print(peak_index, "peak index")
+        x_centered = x - peak_index
+        if channel == 1:
+            wvls = x_centered * self.time_bin / self.a_channel1 + self.lambda_middle
+        elif channel == 2:
+            wvls = x_centered * self.time_bin / self.a_channel2 + self.lambda_middle
+        w = self.wvl2freq(wvls) ## in MHz
+
+
+        w0_guess = w[np.argmax(y)]
+        A_guess = -max(y) * 15
+        C_guess = -min(y)/10
+        gamma_guess = self.fwhm(y, w)*0.1
         q_guess = 0.1
-        guess = [A_guess, q_guess, x0_guess, gamma_guess, C_guess]
-        popt, pcov = curve_fit(self.fano, x, y, p0=guess, maxfev=1000)
+        guess = [A_guess, q_guess, w0_guess, gamma_guess, C_guess]
+        plt.plot(w, self.fano(w, *guess), 'g-')
+        popt, pcov = curve_fit(self.fano, w, y, p0=guess, maxfev=1000)
         print(popt)
-        plt.plot(x, self.fano(x, *popt), 'r-')
-        plt.plot(x, y, 'b-')
-        plt.xlabel('Wavelength (nm)')
+        plt.plot(w, self.fano(w, *popt), 'r-')
+        plt.plot(w, y, 'b-')
+        plt.xlabel('Frequency (MHz)')
         plt.ylabel('Intensity (V)')
-        plt.legend(['Fano lineshape fit', 'data'])
+        plt.legend([f"Guess",f'Fano lineshape fit, gamma = {popt[3]}$\pm${pcov[3][3]}', 'data'])
         plt.show()
         
         return popt, pcov
@@ -123,9 +160,11 @@ class Leela():
     
     def window_averaging(self, array, window_size):
         window_average = np.convolve(array, np.ones(window_size)/window_size, mode='valid')
-        plt.plot(window_average)
-        plt.show()
+        # plt.plot(window_average)
+        # plt.show()
         return window_average
+    
+    
     ''' #split peaks function way too fancy and doesnt work
     def split_peaks(self, y:np.array, x_start=0, x_end=None):
         if x_end is None:
@@ -147,23 +186,26 @@ class Leela():
         return split_peaks
         '''
     def split_peaks(self, y:np.array, x_start=0, x_end=None):
-        if x_end is None:
-            x_end = len(y)
-        x = np.linspace(x_start, x_end, len(y))
+        
+        x = np.linspace(self.lambda_middle - self.lambda_delta, self.lambda_middle + self.lambda_middle , len(y))
     
-        peaks, _ = find_peaks(y, height = 10, width = 1000)
+        datamin = np.min(y)
+        peaks, _ = find_peaks(y, height = 10 + datamin, width = 1000)
         x_peaks = x[peaks]
         y_peaks = y[peaks]
         split_peaks = []
 
         for peak in peaks:
-            right = peak + 100000
-            left = peak - 100000
+            right = peak + 50000 
+            left = peak - 50000
             split_peaks.append(y[left:right])
+            # plt.plot(y[left:right])
+            # plt.show()
         
         return split_peaks
                
 if __name__ == "__main__":
-    with Leela() as lc:
-        import code 
-    code.interact(local=locals())
+    Leela()
+    # with Leela() as lc:
+    #     import code 
+    # code.interact(local=locals())
