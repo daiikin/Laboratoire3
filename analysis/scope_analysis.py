@@ -22,19 +22,36 @@ class Leela():
         self.data2 = self.window_averaging(self.channel2, 10000)
         self.split1 = self.split_peaks(self.data1)
         self.split2 = self.split_peaks(self.data2)
+        self.fsr_cavity1 = 0.038 #in nm
+        self.fsr_cavity2 = 0.4 #in nm
+        self.fsr_cavity1_freq = self.celeretite/self.lambda_middle**2 * self.fsr_cavity1 * 1e3
+        self.fsr_cavity2_freq = self.celeretite/self.lambda_middle**2 * self.fsr_cavity2 * 1e3
+        self.gammas1 = []
+        self.gammas2 = []
+    
         """
         self.fit_fano(self.split1[5])
         """
         for peaks in self.split1:
             if peaks.size > 0:
-                self.fit_fano(peaks, 1)
+                popt = self.fit_fano(peaks, 1)[0]
+                self.gammas1.append(popt[3])
             else:
                 print("No peaks found")
         for peaks in self.split2:
             if peaks.size > 0:
-                self.fit_fano(peaks, 2)
+                popt = self.fit_fano(peaks, 2)[0]
+                self.gammas2.append(popt[3])
             else:
                 print("No peaks found")
+
+        self.gamma1_avg = np.mean(self.gammas1)
+        self.gamma2_avg = np.mean(self.gammas2)
+        self.finesse1 = self.fsr_cavity1_freq/self.gamma1_avg
+        self.finesse2 = self.fsr_cavity2_freq/self.gamma2_avg
+        print(f"Finesse cavity 1: {self.finesse1}")
+        print(f"Finesse cavity 2: {self.finesse2}")
+        
 
 
 
@@ -108,21 +125,28 @@ class Leela():
             wvls = x_centered * self.time_bin / self.a_channel2 + self.lambda_middle
         w = self.wvl2freq(wvls) ## in MHz
 
-
-        w0_guess = w[np.argmax(y)]
-        A_guess = -max(y) * 15
-        C_guess = -min(y)/10
-        gamma_guess = self.fwhm(y, w)*0.1
-        q_guess = 0.1
+        if channel == 1:
+            w0_guess = w[np.argmax(y)]
+            A_guess = -max(y) * 15
+            C_guess = -min(y)/10
+            gamma_guess = self.fwhm(y, w)*0.1
+            q_guess = 0.1
+            
+        elif channel == 2:
+            w0_guess = w[np.argmax(y)]
+            A_guess = -max(y)
+            C_guess = 0
+            gamma_guess = self.fwhm(y, w)
+            q_guess = 0.1
         guess = [A_guess, q_guess, w0_guess, gamma_guess, C_guess]
         plt.plot(w, self.fano(w, *guess), 'g-')
-        popt, pcov = curve_fit(self.fano, w, y, p0=guess, maxfev=1000)
+        popt, pcov = curve_fit(self.fano, w, y, p0=guess, maxfev=10000)
         print(popt)
         plt.plot(w, self.fano(w, *popt), 'r-')
         plt.plot(w, y, 'b-')
         plt.xlabel('Frequency (MHz)')
         plt.ylabel('Intensity (V)')
-        plt.legend([f"Guess",f'Fano lineshape fit, gamma = {popt[3]}$\pm${pcov[3][3]}', 'data'])
+        plt.legend([f"Guess",f'Fano lineshape fit, gamma = {popt[3]:.4f}$\pm${pcov[3][3]:.4f}', 'data'])
         plt.show()
         
         return popt, pcov
